@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "easycontainer_lib",
+    "easycontainer_example_supervisor",
+]

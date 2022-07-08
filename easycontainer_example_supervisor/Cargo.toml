@@ -1,0 +1,7 @@
+[package]
+name = "easycontainer_example_supervisor"
+version = "0.1.0"
+authors = ["timglabisch <tim@ainfach.de>"]
+edition = "2021"
+
+[dependencies]

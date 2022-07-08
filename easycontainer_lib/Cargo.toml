@@ -1,0 +1,7 @@
+[package]
+name = "easycontainer_lib"
+version = "0.1.0"
+authors = ["timglabisch <tim@ainfach.de>"]
+edition = "2021"
+
+[dependencies]
