@@ -5,3 +5,8 @@ authors = ["timglabisch <tim@ainfach.de>"]
 edition = "2021"
 
 [dependencies]
+easycontainer_lib = { path = "../easycontainer_lib" }
+anyhow = "1.*"
+tokio = { version = "1.*", features = ["full"] }
+tracing-subscriber = "0.2"
+tracing = "0.1.*"
