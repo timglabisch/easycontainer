@@ -1,0 +1,4 @@
+ARG PROJECT_BINARY
+ADD $PROJECT_BINARY /run
+
+CMD ["/run"]
