@@ -31,9 +31,24 @@ docker run --rm \
   "$CONTAINER_ARM64" \
   build --release --target aarch64-unknown-linux-musl
 
-echo "Building Container"
-echo "Rust Build Binary (AMD64)"
+echo "Moving Build Artifacts"
 BINARY_DIR="`pwd`/$2/.tmp_eb_build"
-#rm -rf --preserve-root "$BINARY_DIR"
+rm -rf "`pwd`/$2/.tmp_eb_build/"
 mkdir -p "$BINARY_DIR"
 cp -r ./target "$BINARY_DIR"
+
+cd "`pwd`/$2";
+echo "Building Containers"
+echo "Rust Build Container (AMD64)"
+
+echo "Build AMD64"
+docker buildx build \
+  --build-arg CARGO_RELEASE=.tmp_eb_build/target/x86_64-unknown-linux-musl/release \
+  --platform linux/amd64 \
+  .
+
+echo "Build ARM64"
+docker buildx build \
+  --build-arg CARGO_RELEASE=.tmp_eb_build/target/aarch64-unknown-linux-musl/release \
+  --platform linux/arm64/v8 \
+  .

@@ -17,7 +17,7 @@ pub async fn create_services_from_glob(glob_pattern: &str) -> Result<Vec<Service
     for entry in ::glob::glob(glob_pattern).context("Failed to read glob pattern")? {
         let path = &entry?;
         debug!("found service {}", &path.to_string_lossy());
-        services.push(create_service_from_file(&path).await?);
+        services.push(create_service_from_file(&path).await.context("create service from file")?);
     }
 
     debug!("found {} services.", services.len());
@@ -25,8 +25,9 @@ pub async fn create_services_from_glob(glob_pattern: &str) -> Result<Vec<Service
     Ok(services)
 }
 
-pub async fn run_services_from_glob(glob_pattern: &str) -> Result<Vec<()>, ::anyhow::Error> {
-    let services = create_services_from_glob(glob_pattern).await?;
+pub async fn run_services_from_glob(glob_pattern: &str) -> Result<(), ::anyhow::Error> {
+    let services = create_services_from_glob(glob_pattern).await.context("create_services_from_glob")?;
+
     let service_runners = {
         let runners: Result<Vec<ServiceRunner>, ::anyhow::Error> = services
             .iter()
@@ -78,7 +79,7 @@ pub async fn run_services_from_glob(glob_pattern: &str) -> Result<Vec<()>, ::any
     }
 
 
-    Err(anyhow!("panic"))
+    Ok(())
 }
 
 pub async fn create_service_from_file(path: &PathBuf) -> Result<Service, ::anyhow::Error> {
@@ -88,10 +89,10 @@ pub async fn create_service_from_file(path: &PathBuf) -> Result<Service, ::anyho
         ?;
 
     let mut buf = vec![];
-    file.read_to_end(&mut buf).await.context(format!("could not read file {}", path.display()))?;
+    file.read_to_end(&mut buf).await.context(format!("could not read file {}", path.display())).context("reading file")?;
 
     let service = toml::from_slice::<Service>(&buf)
-        .context(format!("could not parse toml {}", path.display()))?;
+        .context(format!("could not parse toml {}", path.display())).context("toml")?;
 
     Ok(service)
 }
@@ -195,14 +196,14 @@ fn read_stream_to_end<T>(stream_name: &'static str, stream: T) -> JoinHandle<Res
 
         let mut buf = Vec::with_capacity(4096);
         loop {
-            let size = reader.read_buf(&mut buf).await?;
+            let size = reader.read_buf(&mut buf).await.context("readbuf")?;
 
             if size == 0 {
                 debug!("finished reading {}", stream_name);
                 break;
             }
 
-            ::std::io::stdout().write_all(&buf[0..size])?;
+            ::std::io::stdout().write_all(&buf[0..size]).context("stdout write")?;
         }
 
         Ok(())
