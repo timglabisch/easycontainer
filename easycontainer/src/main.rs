@@ -3,6 +3,7 @@ use anyhow::{anyhow, Context};
 use tracing::{debug, info};
 use tracing_subscriber;
 use structopt::StructOpt;
+use crate::build_docker_image::BuildDockerImage;
 use crate::config::Config;
 use crate::docker_rust::ProjectDockerRust;
 use crate::platform::create_platforms;
@@ -10,6 +11,7 @@ use crate::platform::create_platforms;
 mod docker_rust;
 mod platform;
 mod config;
+mod build_docker_image;
 
 #[derive(Debug, StructOpt, Clone)]
 #[structopt(name = "easycontainer", about = "Easycontainer Cli")]
@@ -33,12 +35,16 @@ async fn main() -> Result<(), ::anyhow::Error> {
         dir_work: ::std::env::current_dir().context("current_dir")?.display().to_string(),
     };
 
+    // rust runtime for every platform
     let platforms = create_platforms(&opt).await.context("create platform")?;
 
+    // compile binaries for every platform
+    let project = ProjectDockerRust::new(config.clone(), platforms.clone()).await?;
 
-    let project = ProjectDockerRust::new(config, platforms).await?;
-
-
+    // build the original docker containers.
+    for platform in platforms.iter() {
+        BuildDockerImage::new(config.clone(), platform.clone()).run().await.context("build docker image")?
+    }
 
 
     Ok(())
