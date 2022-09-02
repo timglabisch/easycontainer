@@ -91,6 +91,7 @@ name = "easycontainer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "futures",
  "structopt",
  "tokio",
  "tracing",

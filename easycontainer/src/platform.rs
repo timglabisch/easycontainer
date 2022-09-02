@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context};
+use tokio::join;
 use tokio::process::Command;
 use crate::Opt;
 
@@ -10,22 +11,30 @@ pub struct Platform {
 }
 
 pub async fn create_platforms(config: &Opt) -> Result<Vec<Platform>, ::anyhow::Error> {
+
+    let (amd64, arm64) = join!(
+        create_platform_container(config, "linux/amd64"),
+        create_platform_container(config, "linux/arm64/v8")
+    );
+
     Ok(vec![
-        /*
         Platform {
             rust_target: "x86_64-unknown-linux-musl",
             docker_platform: "linux/amd64",
-            container: create_platform_container(config, "linux/amd64").await.context("linux/amd64 platform container")?,
-        },*/
+            container: amd64.context("linux/amd64 platform container")?,
+        },
         Platform {
             rust_target: "aarch64-unknown-linux-musl",
             docker_platform: "linux/arm64/v8",
-            container: create_platform_container(config, "linux/arm64/v8").await.context("linux/arm64/v8 platform container")?,
+            container: arm64.context("linux/arm64/v8 platform container")?,
         },
     ])
 }
 
 async fn create_platform_container(config: &Opt, docker_platform: &str) -> Result<String, ::anyhow::Error> {
+
+    println!("build platform container {}", docker_platform);
+
     let file_or_container = config.container.clone().unwrap_or("easybill/easycontainer:latest".to_string()); // todo
 
     if ::tokio::fs::metadata(&file_or_container).await.context("read file").is_ok() {
@@ -36,6 +45,8 @@ async fn create_platform_container(config: &Opt, docker_platform: &str) -> Resul
             &file_or_container,
             "-q"
         ]).output().await.context("buildx")?;
+
+        println!("finished build platform container {}", docker_platform);
 
         println!("{}", String::from_utf8_lossy(cmd.stdout.as_ref()));
         println!("{}", String::from_utf8_lossy(cmd.stderr.as_ref()));
