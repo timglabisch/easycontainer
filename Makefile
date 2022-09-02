@@ -9,5 +9,6 @@ dev_run_easycontainer: dev_build_easycontainer
 		--entrypoint=/usr/local/cargo/bin/easycontainer \
 		easycontainer:dev \
 		--container "`pwd`" \
+		--docker-tag "xxxxx:dev" \
 		easycontainer_example_supervisor
 

@@ -21,6 +21,9 @@ pub struct Opt {
 
     #[structopt(long = "container")]
     pub container: Option<String>,
+
+    #[structopt(long = "docker-tag")]
+    pub docker_tag: String,
 }
 
 #[tokio::main]
@@ -33,6 +36,7 @@ async fn main() -> Result<(), ::anyhow::Error> {
     let config = Config {
         dir_project: format!("{}/{}", ::std::env::current_dir().context("current_dir")?.display(), &opt.input.display()),
         dir_work: ::std::env::current_dir().context("current_dir")?.display().to_string(),
+        docker_tag: opt.docker_tag.to_string(),
     };
 
     // rust runtime for every platform
