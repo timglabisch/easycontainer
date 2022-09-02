@@ -99,17 +99,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "easycontainer_example_supervisor"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "easycontainer_lib",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "easycontainer_lib"
 version = "0.1.0"
 dependencies = [

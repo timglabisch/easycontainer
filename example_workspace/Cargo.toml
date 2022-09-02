@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "binary_a",
+    "binary_b",
+]

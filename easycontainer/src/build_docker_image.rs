@@ -69,9 +69,9 @@ impl BuildDockerImage {
 
         // build the docker image
         Self::build_container(&config, &platform, &tmp_binaries_folder).await.context("build docker image")?;
-        Self::tidy_up(&tmp_binaries_folder).await?;
+        // Self::tidy_up(&tmp_binaries_folder).await?;
 
-        ::tokio::fs::remove_dir(&tmp_binaries_folder).await.context(format!("delete directory {}", &tmp_binaries_folder))?;
+        // ::tokio::fs::remove_dir(&tmp_binaries_folder).await.context(format!("delete directory {}", &tmp_binaries_folder))?;
 
         println!("finished building container for platform {}", &platform.docker_platform);
 
