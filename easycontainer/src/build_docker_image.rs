@@ -53,7 +53,7 @@ impl BuildDockerImage {
         println!("building container for platform {}", &platform.docker_platform);
 
         // create tmp folder
-        let tmp_binaries_folder = format!("{}/.eb_build_tmp_{}", &config.dir_project, &config.build_docker_platform_tag(&platform));
+        let tmp_binaries_folder = format!("{}/.eb_build_tmp_{}", &config.dir_project, Config::build_docker_platform_tag_arch(&platform));
         ::tokio::fs::create_dir_all(&tmp_binaries_folder).await.context(format!("create directory {}", &tmp_binaries_folder))?;
 
         Self::tidy_up(&tmp_binaries_folder).await?;
@@ -63,14 +63,15 @@ impl BuildDockerImage {
         let new_binaries = Self::find_binaries(&config, &platform).await.context("find binaries")?;
         for new_binary in new_binaries.iter() {
             let new_path = format!("{}/{}", &tmp_binaries_folder, new_binary.file_name().expect("invalid filename").to_string_lossy().to_string());
+            println!("copy binary from {} to {}", new_binary.display(), &new_path);
             ::tokio::fs::copy(new_binary, &new_path).await.context(format!("could not copy from {} to {}", new_binary.display(), &new_path))?;
         }
 
         // build the docker image
         Self::build_container(&config, &platform, &tmp_binaries_folder).await.context("build docker image")?;
-        Self::tidy_up(&tmp_binaries_folder).await?;
+        // Self::tidy_up(&tmp_binaries_folder).await?;
 
-        ::tokio::fs::remove_dir(&tmp_binaries_folder).await.context(format!("delete directory {}", &tmp_binaries_folder))?;
+        // ::tokio::fs::remove_dir(&tmp_binaries_folder).await.context(format!("delete directory {}", &tmp_binaries_folder))?;
 
         println!("finished building container for platform {}", &platform.docker_platform);
 
@@ -79,7 +80,7 @@ impl BuildDockerImage {
 
     async fn create_manifest(&self) -> Result<(), ::anyhow::Error> {
 
-        unimplemented!("we dont create the manifest yet, you need to have access to the registry to work with the manifest")
+        unimplemented!("we dont create the manifest yet, you need to have access to the registry to work with the manifest");
 
         let mut platform_tags = self.platforms.iter().map(|p| self.config.build_docker_platform_tag(p)).collect::<Vec<_>>();
 
@@ -103,11 +104,16 @@ impl BuildDockerImage {
 
     async fn build_container(config: &Config, platform: &Platform, binary_folder: &str) -> Result<(), ::anyhow::Error> {
 
+        let relative_tmp_binaries_folder = format!(
+            "./.eb_build_tmp_{}",
+            Config::build_docker_platform_tag_arch(&platform)
+        );
+        
         let args = &[
             "build",
             "-t",
             &config.build_docker_platform_tag(&platform),
-            "--build-arg", &format!("CARGO_RELEASE={}", binary_folder),
+            "--build-arg", &format!("CARGO_RELEASE={}", relative_tmp_binaries_folder),
             "--platform", &platform.docker_platform,
             &config.dir_project,
         ];
