@@ -3,11 +3,13 @@ use anyhow::{anyhow, Context};
 use tracing::{debug, info};
 use tracing_subscriber;
 use structopt::StructOpt;
+use crate::config::Config;
 use crate::docker_rust::ProjectDockerRust;
 use crate::platform::create_platforms;
 
 mod docker_rust;
 mod platform;
+mod config;
 
 #[derive(Debug, StructOpt, Clone)]
 #[structopt(name = "easycontainer", about = "Easycontainer Cli")]
@@ -26,9 +28,15 @@ async fn main() -> Result<(), ::anyhow::Error> {
 
     println!("EasyContainer");
 
+    let config = Config {
+        dir_project: format!("{}/{}", ::std::env::current_dir().context("current_dir")?.display(), &opt.input.display()),
+        dir_work: ::std::env::current_dir().context("current_dir")?.display().to_string(),
+    };
+
     let platforms = create_platforms(&opt).await.context("create platform")?;
 
-    let project = ProjectDockerRust::new(&opt.input, platforms).await?;
+
+    let project = ProjectDockerRust::new(config, platforms).await?;
 
 
 

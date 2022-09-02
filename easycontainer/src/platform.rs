@@ -11,11 +11,12 @@ pub struct Platform {
 
 pub async fn create_platforms(config: &Opt) -> Result<Vec<Platform>, ::anyhow::Error> {
     Ok(vec![
+        /*
         Platform {
             rust_target: "x86_64-unknown-linux-musl",
             docker_platform: "linux/amd64",
             container: create_platform_container(config, "linux/amd64").await.context("linux/amd64 platform container")?,
-        },
+        },*/
         Platform {
             rust_target: "aarch64-unknown-linux-musl",
             docker_platform: "linux/arm64/v8",
@@ -40,7 +41,7 @@ async fn create_platform_container(config: &Opt, docker_platform: &str) -> Resul
         println!("{}", String::from_utf8_lossy(cmd.stderr.as_ref()));
 
         return match cmd.status.success() {
-            true => Ok(String::from_utf8_lossy(cmd.stdout.as_ref()).to_string()),
+            true => Ok(String::from_utf8_lossy(cmd.stdout.as_ref()).trim().to_string()),
             false => Err(anyhow!("could not build container"))
         };
     }
