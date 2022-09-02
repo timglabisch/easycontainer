@@ -3,5 +3,5 @@
 members = [
     "easycontainer",
     "easycontainer_lib",
-    "easycontainer_example_supervisor",
+    "example_supervisor",
 ]
