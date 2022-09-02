@@ -46,10 +46,10 @@ async fn main() -> Result<(), ::anyhow::Error> {
     let project = ProjectDockerRust::new(config.clone(), platforms.clone()).await?;
 
     // build the original docker containers.
-    for platform in platforms.iter() {
-        BuildDockerImage::new(config.clone(), platform.clone()).run().await.context("build docker image")?
-    }
+    BuildDockerImage::new(config.clone(), platforms.clone()).run().await.context("build docker image")?;
 
+
+    println!("done!");
 
     Ok(())
 }

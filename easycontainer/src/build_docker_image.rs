@@ -7,51 +7,86 @@ use crate::platform::Platform;
 
 pub struct BuildDockerImage {
     config: Config,
-    platform: Platform,
+    platforms: Vec<Platform>,
 }
 
 impl BuildDockerImage {
-    pub fn new(config: Config, platform: Platform) -> BuildDockerImage {
+    pub fn new(config: Config, platforms: Vec<Platform>) -> BuildDockerImage {
         Self {
             config,
-            platform,
+            platforms: platforms,
         }
     }
 
+    pub async fn tidy_up(&self, binary_folder : &str) -> Result<(), ::anyhow::Error> {
+        // drop old binaries
+        let old_binaries = Self::find_binaries_on_path(binary_folder).await.context(format!("find old binaries in directory {}", &binary_folder))?;
+        for old_binary in old_binaries.iter() {
+            ::tokio::fs::remove_file(old_binary).await.context(format!("could not delete old binary {}", old_binary.display()))?;
+        }
 
-    pub async fn run(mut self) -> Result<(), ::anyhow::Error> {
+        Ok(())
+    }
+
+    pub async fn run(self) -> Result<(), ::anyhow::Error> {
 
         // create tmp folder
         let tmp_binaries_folder = format!("{}/.easycontainer_tmp_binaries", &self.config.dir_project);
         ::tokio::fs::create_dir_all(&tmp_binaries_folder).await.context(format!("create directory {}", &tmp_binaries_folder))?;
 
-        // drop old binaries
-        let old_binaries = Self::find_binaries_on_path(&tmp_binaries_folder).await.context(format!("find old binaries in directory {}", &tmp_binaries_folder))?;
-        for old_binary in old_binaries.iter() {
-            ::tokio::fs::remove_file(old_binary).await.context(format!("could not delete old binary {}", old_binary.display()))?;
+        self.tidy_up(&tmp_binaries_folder).await?;
+
+        for platform in &self.platforms {
+            // copy new binaries
+            let new_binaries = self.find_binaries(platform).await.context("find binaries")?;
+            for new_binary in new_binaries.iter() {
+                let new_path = format!("{}/{}", &tmp_binaries_folder, new_binary.file_name().expect("invalid filename").to_string_lossy().to_string());
+                ::tokio::fs::copy(new_binary, &new_path).await.context(format!("could not copy from {} to {}", new_binary.display(), &new_path))?;
+            }
+
+            // build the docker image
+            self.build_container(platform).await.context("build docker image")?;
+            self.tidy_up(&tmp_binaries_folder).await?;
         }
 
-        // copy new binaries
-        let new_binaries = self.find_binaries().await.context("find binaries")?;
-        for new_binary in new_binaries.iter() {
-            let new_path = format!("{}/{}", tmp_binaries_folder, new_binary.file_name().expect("invalid filename").to_string_lossy().to_string());
-            ::tokio::fs::copy(new_binary, &new_path).await.context(format!("could not copy from {} to {}", new_binary.display(), &new_path))?;
-        }
+        ::tokio::fs::remove_dir(&tmp_binaries_folder).await.context(format!("delete directory {}", &tmp_binaries_folder))?;
 
-        // build the docker image
-        self.build_container().await.context("build docker image")?;
+        // create the manifest
+        self.create_manifest().await?;
 
         Ok(())
     }
 
-    async fn build_container(&self) -> Result<(), ::anyhow::Error> {
+    async fn create_manifest(&self) -> Result<(), ::anyhow::Error> {
+
+        let mut platform_tags = self.platforms.iter().map(|p| self.config.build_docker_platform_tag(p)).collect::<Vec<_>>();
+
+        let mut args = [
+            "manifest",
+            "create",
+            &self.config.docker_tag,
+        ].iter().map(|x|x.to_string()).collect::<Vec<_>>();
+
+        args.append(&mut platform_tags);
+
+        println!("running docker with args: {:?}", args);
+
+        let cmd = Command::new("docker").args(args).output().await.context("build original container")?;
+
+        println!("{}", String::from_utf8_lossy(cmd.stdout.as_ref()));
+        println!("{}", String::from_utf8_lossy(cmd.stderr.as_ref()));
+
+        Ok(())
+    }
+
+    async fn build_container(&self, platform: &Platform) -> Result<(), ::anyhow::Error> {
 
         let args = &[
             "build",
             "-t",
-            &self.config.build_docker_platform_tag(&self.platform),
+            &self.config.build_docker_platform_tag(&platform),
             "--build-arg","CARGO_RELEASE=.easycontainer_tmp_binaries",
-            "--platform", &self.platform.docker_platform,
+            "--platform", &platform.docker_platform,
             &self.config.dir_project,
         ];
 
@@ -65,8 +100,8 @@ impl BuildDockerImage {
         Ok(())
     }
 
-    async fn find_binaries(&self) -> Result<Vec<PathBuf>, ::anyhow::Error> {
-        let release_path = format!("{}/target/{}/release", &self.config.dir_work, &self.platform.rust_target);
+    async fn find_binaries(&self, platform: &Platform) -> Result<Vec<PathBuf>, ::anyhow::Error> {
+        let release_path = format!("{}/target/{}/release", &self.config.dir_work, &platform.rust_target);
 
         Self::find_binaries_on_path(&release_path).await
     }
